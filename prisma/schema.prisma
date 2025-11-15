@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String     @unique
+  password  String
+  xp        Int        @default(0)
+  level     Int        @default(1)
+  unlocked  Json?
+   photo     String?
+  createdAt DateTime   @default(now())
+
+  missions  UserMission[]
+  rewards   UserReward[]
+  activity  UserActivity[]        // ✅ para registrar ações diárias
+  summaries DailySummary[]        // ✅ snapshots diários
+}
+
+// ✅ Missões do sistema
+model Mission {
+  id          Int           @id @default(autoincrement())
+  title       String
+  description String
+  dayNumber   Int
+  xpReward    Int            @default(50)
+  details     Json?
+  createdAt   DateTime       @default(now())
+
+  users       UserMission[]
+}
+
+// ✅ Recompensas do sistema
+model Reward {
+  id           Int           @id @default(autoincrement())
+  title        String
+  description  String
+  requiredDays Int
+  imageUrl     String?
+  createdAt    DateTime       @default(now())
+
+  users        UserReward[]
+}
+
+// ✅ Ligação entre usuários e missões
+model UserMission {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  mission     Mission   @relation(fields: [missionId], references: [id])
+  missionId   Int
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  unlockedAt  DateTime?
+
+  @@unique([userId, missionId], name: "userId_missionId")
+}
+
+// ✅ Ligação entre usuários e recompensas
+model UserReward {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  reward      Reward    @relation(fields: [rewardId], references: [id])
+  rewardId    Int
+  unlocked    Boolean   @default(false)
+  unlockedAt  DateTime?
+}
+
+///////////////////////////////////////////////////////
+// ✅ NOVO SISTEMA REAL DE RELATÓRIOS
+///////////////////////////////////////////////////////
+
+// 👇 Registra eventos reais (abrir app, completar missão, ganhar XP, desbloquear recompensa)
+model UserActivity {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  type      String   // ex: "mission_completed", "xp_gained", "reward_unlocked"
+  metadata  Json?    // dados extras (missão, quantidade de XP, etc)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])   // ✅ otimiza relatórios
+}
+
+// 👇 Snapshot diário para relatórios "resumo do dia", "semana", "mês"
+model DailySummary {
+  id             Int      @id @default(autoincrement())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         Int
+  date           DateTime // sempre no formato YYYY-MM-DD
+  missionsDone   Int      @default(0)
+  xpEarned       Int      @default(0)
+  streak         Int      @default(0)
+  level          Int
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, date], name: "user_day_unique")
+}
