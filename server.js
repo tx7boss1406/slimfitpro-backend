@@ -9,6 +9,8 @@ import rewardRoutes from "./routes/rewards.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import reportRoutes from "./routes/reports.js"; // ✅ ROTAS DE RELATÓRIOS
+import goalRoutes from "./routes/goals.js";
+import nutritionRoutes from "./routes/nutrition.js";
 
 import jwt from "jsonwebtoken";
 
@@ -16,7 +18,19 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 const app = express();
-app.use(cors());
+// permitir somente o frontend (Vercel)
+const allowedOrigins = [
+  process.env.ALLOWED_ORIGINS || "https://slimfitpro-alpha.vercel.app"
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow non-browser tools (curl)
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("CORS not allowed"), false);
+  },
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
+}));
 app.use(express.json());
 
 // ✅ Rotas existentes
@@ -24,9 +38,10 @@ app.use("/missions", missionRoutes);
 app.use("/rewards", rewardRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
-
 // ✅ Nova rota: RELATÓRIOS
 app.use("/reports", reportRoutes);
+app.use("/goals", goalRoutes);
+app.use("/nutrition", nutritionRoutes);
 
 // ✅ Rota de teste
 app.get("/", (req, res) => res.send("API SlimFitPro rodando 🚀"));

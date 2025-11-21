@@ -15,16 +15,21 @@ model User {
   xp        Int        @default(0)
   level     Int        @default(1)
   unlocked  Json?
-   photo     String?
+  photo     String?
   createdAt DateTime   @default(now())
 
-  missions  UserMission[]
-  rewards   UserReward[]
-  activity  UserActivity[]        // ✅ para registrar ações diárias
-  summaries DailySummary[]        // ✅ snapshots diários
+  missions    UserMission[]
+  rewards     UserReward[]
+  activity    UserActivity[]
+  summaries   DailySummary[]
+  goals       Goal[]               // ✅ Adicionado
+  nutrition   Nutrition[]          // ✅ Adicionado
 }
 
-// ✅ Missões do sistema
+// ----------------------------------------------------
+// MISSÕES
+// ----------------------------------------------------
+
 model Mission {
   id          Int           @id @default(autoincrement())
   title       String
@@ -37,7 +42,24 @@ model Mission {
   users       UserMission[]
 }
 
-// ✅ Recompensas do sistema
+model UserMission {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  missionId   Int
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  unlockedAt  DateTime?
+
+  user        User      @relation(fields: [userId], references: [id])
+  mission     Mission   @relation(fields: [missionId], references: [id])
+
+  @@unique([userId, missionId], name: "userId_missionId")
+}
+
+// ----------------------------------------------------
+// RECOMPENSAS
+// ----------------------------------------------------
+
 model Reward {
   id           Int           @id @default(autoincrement())
   title        String
@@ -49,58 +71,75 @@ model Reward {
   users        UserReward[]
 }
 
-// ✅ Ligação entre usuários e missões
-model UserMission {
-  id          Int       @id @default(autoincrement())
-  user        User      @relation(fields: [userId], references: [id])
-  userId      Int
-  mission     Mission   @relation(fields: [missionId], references: [id])
-  missionId   Int
-  completed   Boolean   @default(false)
-  completedAt DateTime?
-  unlockedAt  DateTime?
-
-  @@unique([userId, missionId], name: "userId_missionId")
-}
-
-// ✅ Ligação entre usuários e recompensas
 model UserReward {
   id          Int       @id @default(autoincrement())
-  user        User      @relation(fields: [userId], references: [id])
   userId      Int
-  reward      Reward    @relation(fields: [rewardId], references: [id])
   rewardId    Int
   unlocked    Boolean   @default(false)
   unlockedAt  DateTime?
+
+  user        User      @relation(fields: [userId], references: [id])
+  reward      Reward    @relation(fields: [rewardId], references: [id])
 }
 
-///////////////////////////////////////////////////////
-// ✅ NOVO SISTEMA REAL DE RELATÓRIOS
-///////////////////////////////////////////////////////
+// ----------------------------------------------------
+// ATIVIDADES E RELATÓRIOS
+// ----------------------------------------------------
 
-// 👇 Registra eventos reais (abrir app, completar missão, ganhar XP, desbloquear recompensa)
 model UserActivity {
   id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
   userId    Int
-  type      String   // ex: "mission_completed", "xp_gained", "reward_unlocked"
-  metadata  Json?    // dados extras (missão, quantidade de XP, etc)
+  type      String
+  metadata  Json?
   createdAt DateTime @default(now())
 
-  @@index([userId, createdAt])   // ✅ otimiza relatórios
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
 }
 
-// 👇 Snapshot diário para relatórios "resumo do dia", "semana", "mês"
 model DailySummary {
-  id             Int      @id @default(autoincrement())
-  user           User     @relation(fields: [userId], references: [id])
-  userId         Int
-  date           DateTime // sempre no formato YYYY-MM-DD
-  missionsDone   Int      @default(0)
-  xpEarned       Int      @default(0)
-  streak         Int      @default(0)
-  level          Int
-  createdAt      DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  date         DateTime
+  missionsDone Int      @default(0)
+  xpEarned     Int      @default(0)
+  streak       Int      @default(0)
+  level        Int
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, date], name: "user_day_unique")
+}
+
+// ----------------------------------------------------
+// 🔥 ADICIONADO AGORA — TABELA DE METAS (GOALS)
+// ----------------------------------------------------
+
+model Goal {
+  id       Int    @id @default(autoincrement())
+  userId   Int
+  title    String
+  progress Int    @default(0)
+
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------
+// 🔥 ADICIONADO AGORA — TABELA DE NUTRIÇÃO
+// ----------------------------------------------------
+
+model Nutrition {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  date     DateTime @default(now())
+  calories Int      @default(0)
+  protein  Int      @default(0)
+  carbs    Int      @default(0)
+  fats     Int      @default(0)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date], name: "nutrition_day_unique")
 }
