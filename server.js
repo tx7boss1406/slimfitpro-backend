@@ -8,7 +8,7 @@ import missionRoutes from "./routes/missions.js";
 import rewardRoutes from "./routes/rewards.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
-import reportRoutes from "./routes/reports.js"; // ✅ ROTAS DE RELATÓRIOS
+import reportRoutes from "./routes/reports.js";
 import goalRoutes from "./routes/goals.js";
 import nutritionRoutes from "./routes/nutrition.js";
 
@@ -18,35 +18,31 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 const app = express();
-// permitir somente o frontend (Vercel)
-const allowedOrigins = [
-  process.env.ALLOWED_ORIGINS || "https://slimfitpro-alpha.vercel.app"
-];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow non-browser tools (curl)
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("CORS not allowed"), false);
-  },
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
-}));
+
+// 🔥 CORS TEMPORÁRIO — LIBERADO TOTAL 🔥
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
-// ✅ Rotas existentes
+// ✅ Rotas
 app.use("/missions", missionRoutes);
 app.use("/rewards", rewardRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
-// ✅ Nova rota: RELATÓRIOS
 app.use("/reports", reportRoutes);
 app.use("/goals", goalRoutes);
 app.use("/nutrition", nutritionRoutes);
 
-// ✅ Rota de teste
+// Rota de teste
 app.get("/", (req, res) => res.send("API SlimFitPro rodando 🚀"));
 
-// ✅ Rota protegida - exemplo
+// Rota protegida - /auth/me
 app.get("/auth/me", async (req, res) => {
   try {
     const auth = req.headers.authorization;
@@ -62,7 +58,8 @@ app.get("/auth/me", async (req, res) => {
       where: { id: Number(payload.userId) },
     });
 
-    if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+    if (!user)
+      return res.status(404).json({ message: "Usuário não encontrado" });
 
     return res.json({
       id: user.id,
@@ -78,7 +75,7 @@ app.get("/auth/me", async (req, res) => {
   }
 });
 
-// ✅ Atualizar progresso do usuário
+// Atualizar progresso
 app.post("/user/progress", async (req, res) => {
   try {
     const { token, xpGain, unlockKey } = req.body;
@@ -93,7 +90,8 @@ app.post("/user/progress", async (req, res) => {
       where: { id: Number(payload.userId) },
     });
 
-    if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+    if (!user)
+      return res.status(404).json({ message: "Usuário não encontrado" });
 
     let newXp = user.xp + (xpGain || 0);
     let level = user.level;
@@ -125,7 +123,7 @@ app.post("/user/progress", async (req, res) => {
   }
 });
 
-// ✅ Porta do servidor
+// Porta do servidor
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`✅ Servidor backend rodando na porta ${PORT}`)
